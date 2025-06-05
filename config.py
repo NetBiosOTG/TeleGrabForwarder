@@ -59,7 +59,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
     
         # Shuffle.com: Messages from "Shuffle.com" source channel
-        -1001517758091: {  # Shuffle.com source channel ID
+    -1001517758091: {  # Shuffle.com source channel ID
         -1002336070508: 402,  # Casino Sites Hub (Shuffle.com)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
@@ -154,7 +154,35 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002336070508: 2450,  # Casino Sites Hub (Winna)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+        # Sicodice Official Channel: Messages from "Sicodice Official Channel" source channel
+    -1001677525545: {  # Sicodice Official Channel source channel ID
+        -1002336070508: 391,  # Casino Sites Hub (Winna)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Jacksclub.io Official (Announcement): Messages from "Jacksclub.io Official (Announcement)" source channel
+    -1001419027332: {  # Jacksclub.io Official (Announcement) source channel ID
+        -1002336070508: 877,  # Casino Sites Hub (Winna)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Gamba.com: Messages from "Gamba.com" source channel
+    -1002121217568: {  # Gamba.com source channel ID
+        -1002336070508: 412,  # Casino Sites Hub (Winna)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Razed Sports: Messages from "Razed Sports" source channel
+    -1002379667487: {  # Razed Sports source channel ID
+        -1002336070508: 416,  # Casino Sites Hub (Winna)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
     }
+    
 }
 
 # Legacy configuration (kept for backwards compatibility, but not used in new version)
