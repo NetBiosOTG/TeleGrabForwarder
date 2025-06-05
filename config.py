@@ -25,7 +25,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     
         # ₿C Token Lounge: Messages from "₿C Token Lounge" source channel
     -1002249193735: {   # ₿C Token Lounge source channel ID
-    #   -1002336070508: 393,  # Casino Sites Hub (Goated)
+        -1002336070508: 2435,  # Casino Sites Hub (Goated)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -46,7 +46,7 @@ SOURCE_TO_TOPIC_MAPPING = {
         
         # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
     -1001892037773: {  # MetaWin.com MAIN TG source channel ID
-    #    -1002336070508: 393,  # Casino Sites Hub (Goated)
+        -1002336070508: 2441,  # Casino Sites Hub (Goated)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -59,7 +59,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
     
         # Shuffle.com: Messages from "Shuffle.com" source channel
-    - -1001517758091: {  # Shuffle.com source channel ID
+        -1001517758091: {  # Shuffle.com source channel ID
         -1002336070508: 402,  # Casino Sites Hub (Shuffle.com)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
@@ -67,7 +67,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     
         # BC.Game 🔔 Notifications: Messages from "BC.Game 🔔 Notifications" source channel
     -1001166926064: {  # News source channel ID
-    #    -1002109995475: 393,  # Casino Sites Hub (BC.Game 🔔 Notifications)
+        -1002109995475: 2435,  # Casino Sites Hub (BC.Game 🔔 Notifications)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -81,7 +81,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     
         # Staxx Boosts: Messages from "Staxx Boosts" source channel
     -1002378946187: {  # Staxx Boosts source channel ID
-    #    -1002336070508: 393,  # Casino Sites Hub (Staxx Boosts)
+        -1002336070508: 2437,  # Casino Sites Hub (Staxx Boosts)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -95,7 +95,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     
         # Roobet: Messages from "Roobet" source channel
     -1001278995047: {  # Roobet source channel ID
-    #    -1002336070508: 393,  # Casino Sites Hub (Roobet)
+        -1002336070508: 2447,  # Casino Sites Hub (Roobet)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -130,7 +130,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     
         # RainsTEAM: Messages from "RainsTEAM" source channel
     -1001738096535: {  # RainsTEAM source channel ID
-    #   -1002336070508: 393,  # Casino Sites Hub (RainsTEAM)
+        -1002336070508: 2439,  # Casino Sites Hub (RainsTEAM)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
@@ -145,6 +145,13 @@ SOURCE_TO_TOPIC_MAPPING = {
         # High Rollers - Stake.US - (Unofficial): Messages from "High Rollers - Stake.US - (Unofficial)" source channel
     -1002102309936: {  # High Rollers - Stake.US - (Unofficial) source channel ID
         -1002336070508: 772,  # Casino Sites Hub (High Rollers - Stake.US - (Unofficial))
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+
+        # Winna: Messages from "Winna" source channel
+    -1002472636693: {  # Winna source channel ID
+        -1002336070508: 2450,  # Casino Sites Hub (Winna)
         -1002027750840: 501,  # TipMeTips (Bonus Codes)
         -1002210132078: None, # Hotmamajess's Playground (No Topic)
     }
