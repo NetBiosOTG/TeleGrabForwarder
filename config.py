@@ -18,8 +18,9 @@ SOURCE_CHATS = [
 # Target chats to forward to (dict with chat_id: topic_id)
 # topic_id can be None for regular groups
 TARGET_CHATS = {
-#  -1002210132078: None,  # Hotmamajess's Playground (no topic)
-   -1002336070508: None   # Casino sites hub (no topic)
+   -1002210132078: None,  # Hotmamajess's Playground (no topic)
+   -1002336070508: None,   # Casino sites hub (no topic)
+   -1002027750840: 501
 }
 
 # Validate configuration
