@@ -1,50 +1,158 @@
 import os
 
-# Telegram API credentials - get these from https://my.telegram.org
-API_ID = int(os.getenv('API_ID', '0'))
-API_HASH = os.getenv('API_HASH', '')
-PHONE_NUMBER = os.getenv('PHONE_NUMBER', '')
+# Your Telegram API credentials
+API_ID = '21637014'
+API_HASH = '410955dedb8c4b1628eb41df366762c6'
+PHONE_NUMBER = '+18126979150'
 
-# Source chats to monitor (list of chat IDs or usernames)
-# Examples: [-1001234567890, '@channelname', 'https://t.me/channelname']
-SOURCE_CHATS = [
-    -1002133338932, -1002234305882, -1002185512641, -1002249193735,
-    -1001892037773, -1002434383104, -1002061136110, -1001166926064,
-    -1002109995475, -1001517758091, -1002060359531, -1001278995047,
-    -1002414808284, -1001356950325, -1001751288924, -1001703288746, 
-    -1001738096535, -1001542279201, -1002102309936, -1002378946187
-]
+# New mapping structure: Source chat ID -> Target groups with their topics
+# SOURCE_TO_TOPIC_MAPPING = {
+#     source_chat_id: {
+#         target_group_id: topic_id,
+#         target_group_id2: topic_id2,
+#         # ... more target groups
+#     },
+#     # ... more source chats
+# }
 
-# Target chats to forward to (dict with chat_id: topic_id)
-# topic_id can be None for regular groups
-TARGET_CHATS = {
-   -1002210132078: None,  # Hotmamajess's Playground (no topic)
-   -1002336070508: None,   # Casino sites hub (no topic)
-   -1002027750840: 501
+SOURCE_TO_TOPIC_MAPPING = {
+        # Goated: Messages from "Goated Drops" source channel
+     -1002234305882: {  # Goated Drops source channel ID
+        -1002336070508: 393,  # Casino Sites Hub (Goated)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # ₿C Token Lounge: Messages from "₿C Token Lounge" source channel
+    -1002249193735: {   # ₿C Token Lounge source channel ID
+    #   -1002336070508: 393,  # Casino Sites Hub (Goated)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Shuffle.com - Bonus Code VIP: Messages from "Shuffle.com - Bonus Code VIP" source channel
+    -1002185512641: {  # Shuffle.com - Bonus Code VIP source channel ID
+        -1002336070508: 402,  # Casino Sites Hub (Goated)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    }, 
+    
+        # Stake.US Daily Drops: Messages from "Stake.US Daily Drops" source channel
+    -1002133338932: {  # Stake.US Daily Drops source channel ID
+        -1002336070508: 772,  # Casino Sites Hub (Goated)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },    
+        
+        # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
+    -1001892037773: {  # MetaWin.com MAIN TG source channel ID
+    #    -1002336070508: 393,  # Casino Sites Hub (Goated)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Goated.com: Messages from "Goated.com" source channel
+    -1002434383104: {  # Goated.com source channel ID
+        -1002336070508: 393,  # Casino Sites Hub (Goated.com)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Shuffle.com: Messages from "Shuffle.com" source channel
+    - -1001517758091: {  # Shuffle.com source channel ID
+        -1002336070508: 402,  # Casino Sites Hub (Shuffle.com)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # BC.Game 🔔 Notifications: Messages from "BC.Game 🔔 Notifications" source channel
+    -1001166926064: {  # News source channel ID
+    #    -1002109995475: 393,  # Casino Sites Hub (BC.Game 🔔 Notifications)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Shuffle Sports: Messages from "Shuffle Sports" source channel
+    -1002109995475: {  # Shuffle Sports source channel ID
+        -1002336070508: 402,  # Casino Sites Hub (Shuffle Sports)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Staxx Boosts: Messages from "Staxx Boosts" source channel
+    -1002378946187: {  # Staxx Boosts source channel ID
+    #    -1002336070508: 393,  # Casino Sites Hub (Staxx Boosts)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Stake.com - Play Smarter: Messages from "Stake.com - Play Smarter" source channel
+    -1001356950325: {  # Stake.com - Play Smarter source channel ID
+        -1002336070508: 772,  # Casino Sites Hub (Stake.com - Play Smarter)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Roobet: Messages from "Roobet" source channel
+    -1001278995047: {  # Roobet source channel ID
+    #    -1002336070508: 393,  # Casino Sites Hub (Roobet)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Razed - Community: Messages from "Razed - Community" source channel
+    -1002061136110: {  # Razed - Community source channel ID
+        -1002336070508: 416,  # Casino Sites Hub (Razed - Community)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Shuffle JP ブースト: Messages from "Shuffle JP ブースト" source channel
+    -1002060359531: {  # Shuffle JP ブースト source channel ID
+        -1002336070508: 402,  # Casino Sites Hub (Shuffle JP ブースト)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Stake.us - Play Smarter: Messages from "Stake.us - Play Smarter" source channel
+    -1001751288924: {  # Stake.us - Play Smarter source channel ID
+        -1002336070508: 772,  # Casino Sites Hub (Stake.us - Play Smarter)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Luckybird.io - Play Smarter: Messages from "Luckybird.io - Play Smarter" source channel
+    -1001703288746: {  # News source channel ID
+        -1002336070508: 418,  # Casino Sites Hub (Luckybird.io - Play Smarter)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # RainsTEAM: Messages from "RainsTEAM" source channel
+    -1001738096535: {  # RainsTEAM source channel ID
+    #   -1002336070508: 393,  # Casino Sites Hub (RainsTEAM)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # Stake.us - VIP Notices: Messages from "Stake.us - VIP Notices" source channel
+    -1001542279201: {  # Stake.us - VIP Notices source channel ID
+        -1002336070508: 772,  # Casino Sites Hub (Stake.us - VIP Notices)
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    },
+    
+        # High Rollers - Stake.US - (Unofficial): Messages from "High Rollers - Stake.US - (Unofficial)" source channel
+    -1002102309936: {  # High Rollers - Stake.US - (Unofficial) source channel ID
+        -1002336070508: 772,  # Casino Sites Hub (High Rollers - Stake.US - (Unofficial))
+        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002210132078: None, # Hotmamajess's Playground (No Topic)
+    }
 }
 
-# Validate configuration
-def validate_config():
-    """Validate that all required config values are set"""
-    errors = []
-    
-    if not API_ID or API_ID == 0:
-        errors.append("API_ID is required")
-    
-    if not API_HASH:
-        errors.append("API_HASH is required")
-    
-    if not PHONE_NUMBER:
-        errors.append("PHONE_NUMBER is required")
-    
-    if not SOURCE_CHATS:
-        errors.append("At least one SOURCE_CHAT is required")
-    
-    if not TARGET_CHATS:
-        errors.append("At least one TARGET_CHAT is required")
-    
-    if errors:
-        raise ValueError(f"Configuration errors: {', '.join(errors)}")
-
-# Validate on import
-validate_config()
+# Legacy configuration (kept for backwards compatibility, but not used in new version)
+SOURCE_CHATS = list(SOURCE_TO_TOPIC_MAPPING.keys())
+TARGET_CHATS = {}
+for source_mappings in SOURCE_TO_TOPIC_MAPPING.values():
+    for target_group_id, topic_id in source_mappings.items():
+        TARGET_CHATS[target_group_id] = topic_id
