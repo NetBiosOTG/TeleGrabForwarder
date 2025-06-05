@@ -83,7 +83,14 @@ class TelegramForwarder:
         try:
             message = event.message
             source_chat = await event.get_chat()
-            source_chat_id = message.peer_id.channel_id if hasattr(message.peer_id, 'channel_id') else message.peer_id.chat_id
+            
+            # FIXED: Get the proper chat ID that matches our config format
+            # For channels/supergroups, we need to use the negative format (-100 prefix)
+            if hasattr(message.peer_id, 'channel_id'):
+                # Convert to the standard negative format that Telegram uses
+                source_chat_id = -1000000000000 - message.peer_id.channel_id
+            else:
+                source_chat_id = message.peer_id.chat_id
             
             # Log incoming message details
             media_type = self.get_media_type(message)
