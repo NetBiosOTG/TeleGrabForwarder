@@ -1,6 +1,7 @@
-# telegram_forwarder.py
+# telegram_forwarder.py (updated for Railway deployment)
 import asyncio
 import logging
+import os
 from datetime import datetime
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
@@ -12,22 +13,36 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('forwarder.log', encoding='utf-8'),
-        logging.StreamHandler()
+        logging.StreamHandler()  # Railway logs to stdout
     ]
 )
 logger = logging.getLogger(__name__)
 
 class TelegramForwarder:
     def __init__(self):
-        self.client = TelegramClient('forwarder_session', config.API_ID, config.API_HASH)
+        # Use string session for Railway deployment
+        from telethon.sessions import StringSession
+        
+        session_string = os.getenv('SESSION_STRING', '')
+        
+        if session_string:
+            self.client = TelegramClient(StringSession(session_string), config.API_ID, config.API_HASH)
+            logger.info("[SESSION] Using string session from environment")
+        else:
+            self.client = TelegramClient('forwarder_session', config.API_ID, config.API_HASH)
+            logger.info("[SESSION] Using file session (will require phone auth)")
+        
         self.forwarded_count = 0
         self.error_count = 0
         
     async def start(self):
         """Initialize and start the userbot"""
         try:
-            await self.client.start(phone=config.PHONE_NUMBER)
+            if os.getenv('SESSION_STRING'):
+                await self.client.start()
+            else:
+                await self.client.start(phone=config.PHONE_NUMBER)
+            
             logger.info("[SUCCESS] Userbot started successfully!")
             
             # Get and log bot info
@@ -158,7 +173,6 @@ class TelegramForwarder:
                 return "Audio"
             else:
                 return "Document"
-
         else:
             return "Other media"
     
