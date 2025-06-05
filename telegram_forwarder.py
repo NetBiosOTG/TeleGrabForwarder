@@ -123,10 +123,11 @@ class TelegramForwarder:
                 # Forward the message
                 if topic_id:
                     # Forward to specific topic in the group
+                    # For topics, we need to send to the supergroup and specify the topic thread
                     forwarded = await self.client.forward_messages(
-                        target_group_id,
-                        message,
-                        reply_to=topic_id  # This should reply to the topic message
+                        entity=target_group_id,
+                        messages=message,
+                        reply_to=topic_id  # Reply to the topic's root message
                     )
                 else:
                     # Forward to general chat (no topic)
@@ -157,8 +158,8 @@ class TelegramForwarder:
                 try:
                     if topic_id:
                         forwarded = await self.client.forward_messages(
-                            target_group_id,
-                            message,
+                            entity=target_group_id,
+                            messages=message,
                             reply_to=topic_id
                         )
                     else:
