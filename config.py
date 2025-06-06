@@ -82,7 +82,7 @@ SOURCE_TO_TOPIC_MAPPING = {
         # Staxx Boosts: Messages from "Staxx Boosts" source channel
     -1002378946187: {  # Staxx Boosts source channel ID
         -1002336070508: 2437,  # Casino Sites Hub (Staxx Boosts)
-        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002027750840: 501.  # TipMeTips (Bonus Codes)
         #-1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
     
@@ -158,7 +158,7 @@ SOURCE_TO_TOPIC_MAPPING = {
         # Sicodice Official Channel: Messages from "Sicodice Official Channel" source channel
     -1001677525545: {  # Sicodice Official Channel source channel ID
         -1002336070508: 391,  # Casino Sites Hub (Winna)
-        -1002027750840: 501,  # TipMeTips (Bonus Codes)
+        -1002027750840: 501, # TipMeTips (Bonus Codes)
         #-1002210132078: None, # Hotmamajess's Playground (No Topic)
     },
     
