@@ -1,9 +1,9 @@
-# config.py - Telegram Forwarder Configuration
+import os
 
-# Your Telegram API credentials
-API_ID = '21637014'
-API_HASH = '410955dedb8c4b1628eb41df366762c6'
-PHONE_NUMBER = '+18126979150'  # Make sure this is your actual phone number
+# Your Telegram API credentials - get from environment variables for security
+API_ID = os.getenv('API_ID', '21637014')
+API_HASH = os.getenv('API_HASH', '410955dedb8c4b1628eb41df366762c6')
+PHONE_NUMBER = os.getenv('PHONE_NUMBER', '+18126979150')
 
 # Mapping structure: Source chat ID -> Target groups with their topics
 # SOURCE_TO_TOPIC_MAPPING = {
