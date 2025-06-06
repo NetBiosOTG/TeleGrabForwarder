@@ -1,5 +1,2 @@
-telethon==1.36.0
-asyncio
-logging
-re
-typing
+telethon>=1.30.0,<2.0.0
+cryptg
