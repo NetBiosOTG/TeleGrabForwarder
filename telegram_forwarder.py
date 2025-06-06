@@ -123,12 +123,35 @@ class TelegramForwarder:
                 # Forward the message
                 if topic_id:
                     # Forward to specific topic in the group
-                    # For topics, we need to send to the supergroup and specify the topic thread
-                    forwarded = await self.client.forward_messages(
-                        entity=target_group_id,
-                        messages=message,
-                        reply_to=topic_id  # Reply to the topic's root message
-                    )
+                    # Try multiple methods for topic forwarding
+                    forwarded = None
+                    try:
+                        # Method 1: Use reply_to parameter
+                        forwarded = await self.client.forward_messages(
+                            entity=target_group_id,
+                            messages=message,
+                            reply_to=topic_id
+                        )
+                    except Exception as e1:
+                        logger.warning(f"[TOPIC] Method 1 failed: {e1}")
+                        try:
+                            # Method 2: Use the raw API with top_msg_id
+                            from telethon.tl.functions.messages import ForwardMessagesRequest
+                            forwarded = await self.client(ForwardMessagesRequest(
+                                from_peer=message.peer_id,
+                                msg_ids=[message.id],
+                                to_peer=target_group_id,
+                                top_msg_id=topic_id,  # This specifies the topic
+                                random_id=[self.client._get_random_id()]
+                            ))
+                        except Exception as e2:
+                            logger.warning(f"[TOPIC] Method 2 failed: {e2}")
+                            # Method 3: Fallback to regular forward
+                            forwarded = await self.client.forward_messages(
+                                target_group_id,
+                                message
+                            )
+                            logger.info(f"[TOPIC] Forwarded to general chat as fallback")
                 else:
                     # Forward to general chat (no topic)
                     forwarded = await self.client.forward_messages(
@@ -157,11 +180,29 @@ class TelegramForwarder:
                 # Retry the forward after waiting
                 try:
                     if topic_id:
-                        forwarded = await self.client.forward_messages(
-                            entity=target_group_id,
-                            messages=message,
-                            reply_to=topic_id
-                        )
+                        # Try the same methods as above for retry
+                        forwarded = None
+                        try:
+                            forwarded = await self.client.forward_messages(
+                                entity=target_group_id,
+                                messages=message,
+                                reply_to=topic_id
+                            )
+                        except Exception:
+                            try:
+                                from telethon.tl.functions.messages import ForwardMessagesRequest
+                                forwarded = await self.client(ForwardMessagesRequest(
+                                    from_peer=message.peer_id,
+                                    msg_ids=[message.id],
+                                    to_peer=target_group_id,
+                                    top_msg_id=topic_id,
+                                    random_id=[self.client._get_random_id()]
+                                ))
+                            except Exception:
+                                forwarded = await self.client.forward_messages(
+                                    target_group_id,
+                                    message
+                                )
                     else:
                         forwarded = await self.client.forward_messages(
                             target_group_id,
