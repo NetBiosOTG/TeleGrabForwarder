@@ -168,7 +168,13 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002756711574: 24,     # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
+    },
+
+    # Test
+    -4842160527: {   # Test 
+        -1002756711574: 1,     # Bonus Codes (Topic ID)
     }
+    
 }
 
 # Legacy configuration (kept for backwards compatibility, but not used in new version)
