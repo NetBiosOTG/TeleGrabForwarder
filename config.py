@@ -1,10 +1,9 @@
 import os
 
-# Your Telegram API credentials - get from environment variables for security
-API_ID = os.getenv('API_ID', '21637014')
-API_HASH = os.getenv('API_HASH', '410955dedb8c4b1628eb41df366762c6')
-PHONE_NUMBER = os.getenv('PHONE_NUMBER', '+18126979150')
-
+# Your Telegram API credentials
+API_ID = '21637014'
+API_HASH = '410955dedb8c4b1628eb41df366762c6'
+PHONE_NUMBER = '+18126979150'
 # Mapping structure: Source chat ID -> Target groups with their topics
 # SOURCE_TO_TOPIC_MAPPING = {
 #     source_chat_id: {
@@ -168,11 +167,6 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002756711574: 24,     # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
-    },
-
-    # Test
-    -1002756711574: {   # Test 
-        -1002336070508: 1,     # Bonus Codes (Topic ID)
     }
     
 }
