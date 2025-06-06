@@ -171,8 +171,8 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
     # Test
-    -4842160527: {   # Test 
-        -1002756711574: 1,     # Bonus Codes (Topic ID)
+    -1002756711574: {   # Test 
+        -1002336070508: 1,     # Bonus Codes (Topic ID)
     }
     
 }
