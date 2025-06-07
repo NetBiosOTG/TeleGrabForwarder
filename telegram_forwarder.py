@@ -96,19 +96,33 @@ class TelegramForwarder:
             logger.debug(f"[TOPIC_CHECK] Topic {topic_id} in group {group_id} verification failed: {e}")
             return False
     
+    def get_chat_id_from_peer(self, peer):
+        """Convert peer to the correct chat ID format that matches our config"""
+        if hasattr(peer, 'channel_id'):
+            # For channels/supergroups, convert to the standard -100 prefix format
+            return int(f"-100{peer.channel_id}")
+        elif hasattr(peer, 'chat_id'):
+            # For regular groups, use negative format
+            return -peer.chat_id
+        elif hasattr(peer, 'user_id'):
+            # For private chats (shouldn't happen in this context, but just in case)
+            return peer.user_id
+        else:
+            logger.error(f"[ERROR] Unknown peer type: {type(peer)}")
+            return None
+    
     async def handle_new_message(self, event):
         """Handle new messages from source chats"""
         try:
             message = event.message
             source_chat = await event.get_chat()
             
-            # FIXED: Get the proper chat ID that matches our config format
-            # For channels/supergroups, we need to use the negative format (-100 prefix)
-            if hasattr(message.peer_id, 'channel_id'):
-                # Convert to the standard negative format that Telegram uses
-                source_chat_id = -1000000000000 - message.peer_id.channel_id
-            else:
-                source_chat_id = message.peer_id.chat_id
+            # FIXED: Use the new method to get the proper chat ID
+            source_chat_id = self.get_chat_id_from_peer(message.peer_id)
+            
+            if source_chat_id is None:
+                logger.error("[ERROR] Could not determine source chat ID")
+                return
             
             # Log incoming message details
             media_type = self.get_media_type(message)
@@ -118,12 +132,25 @@ class TelegramForwarder:
             logger.info(f"   Media: {media_type}")
             logger.info(f"   Text preview: {(message.text or '')[:100]}{'...' if len(message.text or '') > 100 else ''}")
             
+            # Debug: Check if this source_chat_id exists in our mapping
+            if source_chat_id in config.SOURCE_TO_TOPIC_MAPPING:
+                logger.info(f"[MAPPING] Found mapping for source chat {source_chat_id}")
+                mappings = config.SOURCE_TO_TOPIC_MAPPING[source_chat_id]
+                logger.info(f"[MAPPING] Will forward to {len(mappings)} target groups")
+                for target_id, topic_id in mappings.items():
+                    logger.info(f"[MAPPING]   Target: {target_id} -> Topic: {topic_id}")
+            else:
+                logger.warning(f"[NO_MAPPING] No mapping found for source chat {source_chat_id}")
+                logger.info(f"[DEBUG] Available source chat IDs in config: {list(config.SOURCE_TO_TOPIC_MAPPING.keys())}")
+            
             # Forward to mapped target topics
             await self.forward_to_mapped_topics(message, source_chat, source_chat_id)
             
         except Exception as e:
             self.error_count += 1
             logger.error(f"[ERROR] Error handling message: {e}")
+            import traceback
+            logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
     
     async def forward_to_mapped_topics(self, message, source_chat, source_chat_id):
         """Forward message to mapped target topics based on source chat"""
@@ -133,6 +160,7 @@ class TelegramForwarder:
             return
         
         mappings = config.SOURCE_TO_TOPIC_MAPPING[source_chat_id]
+        logger.info(f"[FORWARD_START] Processing {len(mappings)} target mappings for source {source_chat_id}")
         
         for target_group_id, topic_id in mappings.items():
             try:
@@ -199,6 +227,7 @@ class TelegramForwarder:
                                 logger.info(f"[FALLBACK_SUCCESS] Forwarded to general chat")
                 else:
                     # Forward to general chat (no topic)
+                    logger.info(f"[FORWARD_ATTEMPT] Forwarding to general chat in {target_entity.title}")
                     result = await self.client.forward_messages(
                         target_group_id,
                         message,
@@ -233,6 +262,8 @@ class TelegramForwarder:
                 self.error_count += 1
                 logger.error(f"[FAIL] Failed to forward to {target_group_id} topic {topic_id}: {e}")
                 logger.error(f"[DEBUG] Error type: {type(e).__name__}")
+                import traceback
+                logger.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
     
     async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
         """Retry forwarding after flood wait"""
