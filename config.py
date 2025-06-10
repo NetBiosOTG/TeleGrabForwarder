@@ -174,7 +174,13 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002756711574: 153,     # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
-    }
+    },
+
+     # EmpireDrop: Messages from "EmpireDrop" source channel
+    -1001738096535: {   # EmpireDrop source channel ID
+        -1002756711574: 277,     # Bonus Codes (Topic ID)
+        -1002027750840: 501,    # TipMeTips (Bonus Codes)
+        -1002210132078: None,   # Hotmamajess's Playground (No Topic)
 }
 
 # Legacy configuration (kept for backwards compatibility, but not used in new version)
