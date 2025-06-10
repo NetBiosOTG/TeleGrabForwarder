@@ -17,7 +17,7 @@ PHONE_NUMBER = '+18126979150'
 SOURCE_TO_TOPIC_MAPPING = {
     # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
     -1001892037773: {   # MetaWin.com MAIN TG source channel ID
-        -1002756711574: 36,     # Bonus Codes (Topic ID)
+        -1002756711574: 325,     # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
     },
@@ -177,7 +177,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
      # EmpireDrop: Messages from "EmpireDrop" source channel
-    -1001738096535: {   # EmpireDrop source channel ID
+    -1002069575599: {   # EmpireDrop source channel ID
         -1002756711574: 277,     # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
