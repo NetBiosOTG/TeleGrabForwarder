@@ -1,30 +1,59 @@
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-from telethon.errors import SessionPasswordNeededError, FloodWaitError
+# telegram_forwarder.py - Railway-compatible version with config.py
 import asyncio
-import os
 import logging
+import os
+from datetime import datetime
+from telethon import TelegramClient, events
+from telethon.sessions import StringSession
+from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.functions.messages import ForwardMessagesRequest
 
-# Set up logging
+# Import config from config.py
+try:
+    from config import API_ID, API_HASH, PHONE_NUMBER, SOURCE_TO_TOPIC_MAPPING
+    logger = logging.getLogger(__name__)
+    logger.info("[CONFIG] Successfully imported configuration from config.py")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"[CONFIG] Failed to import config.py: {e}")
+    logger.error("[CONFIG] Make sure config.py exists with required variables:")
+    logger.error("   - API_ID")
+    logger.error("   - API_HASH") 
+    logger.error("   - PHONE_NUMBER")
+    logger.error("   - SOURCE_TO_TOPIC_MAPPING")
+    exit(1)
+
+# Get session string from Railway environment variable
+SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING', '')
+
+# Set up detailed logging (no file logging for Railway)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
-# Get credentials from environment variables
-API_ID = int(os.getenv('API_ID', '0'))
-API_HASH = os.getenv('API_HASH', '')
-SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING', '')
-
-# Validate environment variables
+# Validate configuration
 if not API_ID or not API_HASH:
-    logger.error("API_ID and API_HASH environment variables are required!")
+    logger.error("[CONFIG] API_ID and API_HASH are required in config.py!")
     exit(1)
 
 if not SESSION_STRING:
-    logger.error("TELEGRAM_SESSION_STRING environment variable is required!")
-    logger.info("Run generate_session.py locally first to get your session string")
+    logger.error("[CONFIG] TELEGRAM_SESSION_STRING environment variable is required!")
+    logger.info("[CONFIG] Make sure to set TELEGRAM_SESSION_STRING in Railway environment variables")
+    exit(1)
+
+if not SOURCE_TO_TOPIC_MAPPING:
+    logger.error("[CONFIG] SOURCE_TO_TOPIC_MAPPING is required in config.py!")
+    logger.error("[CONFIG] Example format:")
+    logger.error("SOURCE_TO_TOPIC_MAPPING = {")
+    logger.error("    -1001234567890: {  # source chat ID")
+    logger.error("        -1009876543210: 123,  # target group ID: topic ID")
+    logger.error("        -1001111111111: None  # target group ID: general chat")
+    logger.error("    }")
+    logger.error("}")
     exit(1)
 
 class TelegramForwarder:
@@ -37,94 +66,313 @@ class TelegramForwarder:
             retry_delay=3,
             timeout=30
         )
-    
+        self.forwarded_count = 0
+        self.error_count = 0
+        
     async def start(self):
-        """Start the Telegram client"""
+        """Initialize and start the userbot"""
         try:
             await self.client.start()
+            logger.info("[SUCCESS] Userbot started successfully!")
+            
+            # Get and log bot info
             me = await self.client.get_me()
-            logger.info(f"Successfully connected as {me.first_name} (@{me.username})")
-            return True
+            logger.info(f"[LOGIN] Logged in as: {me.first_name} {me.last_name or ''} (@{me.username or 'no username'})")
+            
+            # Verify source and target chats
+            await self.verify_chats()
+            
+            # Register event handlers for each source chat
+            for source_chat_id in SOURCE_TO_TOPIC_MAPPING.keys():
+                self.client.add_event_handler(
+                    self.handle_new_message, 
+                    events.NewMessage(chats=[source_chat_id])
+                )
+            
+            logger.info("[READY] Bot is now listening for messages...")
+            logger.info("=" * 60)
+            
         except Exception as e:
-            logger.error(f"Failed to start client: {e}")
+            logger.error(f"[ERROR] Failed to start userbot: {e}")
+            raise
+    
+    async def verify_chats(self):
+        """Verify access to source and target chats and check for topics"""
+        logger.info("[CHECK] Verifying chat access and topics...")
+        
+        # Check source chats and their topic mappings
+        logger.info(f"[DEBUG] Checking {len(SOURCE_TO_TOPIC_MAPPING)} source chats with topic mappings...")
+        for i, (source_chat_id, mappings) in enumerate(SOURCE_TO_TOPIC_MAPPING.items(), 1):
+            try:
+                logger.info(f"[DEBUG] Checking source chat {i}/{len(SOURCE_TO_TOPIC_MAPPING)}: {source_chat_id}")
+                source_entity = await self.client.get_entity(source_chat_id)
+                logger.info(f"[OK] Source chat verified: {source_entity.title} (ID: {source_chat_id})")
+                
+                # Check each target group and topic for this source
+                for target_group_id, topic_id in mappings.items():
+                    try:
+                        target_entity = await self.client.get_entity(target_group_id)
+                        
+                        if topic_id:
+                            # Verify the topic exists
+                            topic_valid = await self.verify_topic(target_group_id, topic_id)
+                            topic_status = "✓ VALID" if topic_valid else "✗ INVALID"
+                            logger.info(f"[OK]   Target: {target_entity.title} (ID: {target_group_id}) -> Topic ID: {topic_id} [{topic_status}]")
+                        else:
+                            logger.info(f"[OK]   Target: {target_entity.title} (ID: {target_group_id}) -> General chat")
+                            
+                    except Exception as e:
+                        logger.error(f"[FAIL]   Cannot access target group {target_group_id}: {e}")
+                        
+            except Exception as e:
+                logger.error(f"[FAIL] Cannot access source chat {source_chat_id}: {e}")
+        
+        logger.info("[CHECK] Chat verification completed!")
+        logger.info("=" * 60)
+    
+    async def verify_topic(self, group_id, topic_id):
+        """Verify if a topic exists in a group"""
+        try:
+            # Try to get the specific message that represents the topic
+            message = await self.client.get_messages(group_id, ids=topic_id)
+            return message is not None
+        except Exception as e:
+            logger.debug(f"[TOPIC_CHECK] Topic {topic_id} in group {group_id} verification failed: {e}")
             return False
     
-    async def get_channel_info(self, channel_id):
-        """Get information about a channel"""
+    async def handle_new_message(self, event):
+        """Handle new messages from source chats"""
         try:
-            entity = await self.client.get_entity(channel_id)
-            logger.info(f"Channel: {entity.title} (ID: {entity.id})")
-            return entity
-        except FloodWaitError as e:
-            logger.warning(f"Rate limited. Waiting {e.seconds} seconds")
-            await asyncio.sleep(e.seconds)
-            return await self.get_channel_info(channel_id)
-        except Exception as e:
-            logger.error(f"Error accessing channel {channel_id}: {e}")
-            return None
-    
-    async def forward_message(self, from_channel, to_channel, message_id):
-        """Forward a message from one channel to another"""
-        try:
-            await self.client.forward_messages(to_channel, message_id, from_channel)
-            logger.info(f"Forwarded message {message_id} from {from_channel} to {to_channel}")
-            return True
-        except FloodWaitError as e:
-            logger.warning(f"Rate limited. Waiting {e.seconds} seconds")
-            await asyncio.sleep(e.seconds)
-            return await self.forward_message(from_channel, to_channel, message_id)
-        except Exception as e:
-            logger.error(f"Error forwarding message: {e}")
-            return False
-    
-    async def listen_for_messages(self, channel_id):
-        """Listen for new messages in a channel"""
-        try:
-            logger.info(f"Starting to listen for messages in channel {channel_id}")
+            message = event.message
+            source_chat = await event.get_chat()
             
-            @self.client.on(events.NewMessage(chats=channel_id))
-            async def handler(event):
-                logger.info(f"New message received: {event.message.id}")
-                # Add your forwarding logic here
-                # await self.forward_message(channel_id, target_channel, event.message.id)
+            # FIXED: Get the proper chat ID that matches our config format
+            # For channels/supergroups, we need to use the negative format (-100 prefix)
+            if hasattr(message.peer_id, 'channel_id'):
+                # Convert to the standard negative format that Telegram uses
+                source_chat_id = -1000000000000 - message.peer_id.channel_id
+            else:
+                source_chat_id = message.peer_id.chat_id
             
-            # Keep the client running
+            # Log incoming message details
+            media_type = self.get_media_type(message)
+            logger.info(f"[MSG] New message received:")
+            logger.info(f"   From: {source_chat.title} (ID: {source_chat_id})")
+            logger.info(f"   Message ID: {message.id}")
+            logger.info(f"   Media: {media_type}")
+            logger.info(f"   Text preview: {(message.text or '')[:100]}{'...' if len(message.text or '') > 100 else ''}")
+            
+            # Forward to mapped target topics
+            await self.forward_to_mapped_topics(message, source_chat, source_chat_id)
+            
+        except Exception as e:
+            self.error_count += 1
+            logger.error(f"[ERROR] Error handling message: {e}")
+    
+    async def forward_to_mapped_topics(self, message, source_chat, source_chat_id):
+        """Forward message to mapped target topics based on source chat"""
+        # Get the mapping for this source chat
+        if source_chat_id not in SOURCE_TO_TOPIC_MAPPING:
+            logger.warning(f"[SKIP] No mapping found for source chat {source_chat_id}")
+            return
+        
+        mappings = SOURCE_TO_TOPIC_MAPPING[source_chat_id]
+        
+        for target_group_id, topic_id in mappings.items():
+            try:
+                target_entity = await self.client.get_entity(target_group_id)
+                success = False
+                
+                if topic_id:
+                    # Forward to specific topic in the group
+                    logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
+                    
+                    try:
+                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
+                        result = await self.client(ForwardMessagesRequest(
+                            from_peer=await self.client.get_input_entity(source_chat_id),
+                            msg_ids=[message.id],
+                            to_peer=await self.client.get_input_entity(target_group_id),
+                            reply_to_msg_id=topic_id,  # This should reference the topic's root message
+                            random_id=[self.client._get_random_id()],
+                            drop_author=False,
+                            drop_media_captions=False
+                        ))
+                        success = True
+                        logger.info(f"[TOPIC_SUCCESS] Method 1 (reply_to_msg_id) succeeded")
+                        
+                    except Exception as e1:
+                        logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
+                        
+                        try:
+                            # Method 2: Use standard forward_messages with reply_to parameter
+                            result = await self.client.forward_messages(
+                                entity=target_group_id,
+                                messages=message,
+                                from_peer=source_chat_id,
+                                reply_to=topic_id
+                            )
+                            success = True
+                            logger.info(f"[TOPIC_SUCCESS] Method 2 (reply_to parameter) succeeded")
+                            
+                        except Exception as e2:
+                            logger.warning(f"[TOPIC_FAIL] Method 2 failed: {e2}")
+                            
+                            try:
+                                # Method 3: Send as reply to the topic message
+                                result = await self.client.send_message(
+                                    entity=target_group_id,
+                                    message=message.text or "[Forwarded media]",
+                                    reply_to=topic_id,
+                                    file=message.media if message.media else None
+                                )
+                                success = True
+                                logger.info(f"[TOPIC_SUCCESS] Method 3 (send as reply) succeeded")
+                                
+                            except Exception as e3:
+                                logger.warning(f"[TOPIC_FAIL] Method 3 failed: {e3}")
+                                logger.info(f"[FALLBACK] Forwarding to general chat instead")
+                                
+                                # Fallback: Forward to general chat
+                                result = await self.client.forward_messages(
+                                    target_group_id,
+                                    message,
+                                    from_peer=source_chat_id
+                                )
+                                success = True
+                                logger.info(f"[FALLBACK_SUCCESS] Forwarded to general chat")
+                else:
+                    # Forward to general chat (no topic)
+                    result = await self.client.forward_messages(
+                        target_group_id,
+                        message,
+                        from_peer=source_chat_id
+                    )
+                    success = True
+                
+                if success:
+                    self.forwarded_count += 1
+                    
+                    # Verbose success logging
+                    topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
+                    logger.info(f"[FORWARD_SUCCESS] Message forwarded successfully:")
+                    logger.info(f"   From: {source_chat.title} (ID: {source_chat_id})")
+                    logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
+                    logger.info(f"   Original message ID: {message.id}")
+                    logger.info(f"   Total forwarded: {self.forwarded_count}")
+                
+            except FloodWaitError as e:
+                logger.warning(f"[WAIT] Flood wait error: Need to wait {e.seconds} seconds")
+                await asyncio.sleep(e.seconds)
+                # Retry after waiting
+                await self.retry_forward(message, source_chat_id, target_group_id, topic_id, target_entity)
+                
+            except ChatAdminRequiredError:
+                logger.error(f"[PERM] Admin rights required for group {target_group_id}")
+                
+            except UserBannedInChannelError:
+                logger.error(f"[BANNED] User banned in group {target_group_id}")
+                
+            except Exception as e:
+                self.error_count += 1
+                logger.error(f"[FAIL] Failed to forward to {target_group_id} topic {topic_id}: {e}")
+                logger.error(f"[DEBUG] Error type: {type(e).__name__}")
+    
+    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
+        """Retry forwarding after flood wait"""
+        try:
+            if topic_id:
+                # Try the same methods as in the main forward function
+                try:
+                    result = await self.client(ForwardMessagesRequest(
+                        from_peer=await self.client.get_input_entity(source_chat_id),
+                        msg_ids=[message.id],
+                        to_peer=await self.client.get_input_entity(target_group_id),
+                        reply_to_msg_id=topic_id,
+                        random_id=[self.client._get_random_id()],
+                        drop_author=False,
+                        drop_media_captions=False
+                    ))
+                except Exception:
+                    try:
+                        result = await self.client.forward_messages(
+                            entity=target_group_id,
+                            messages=message,
+                            from_peer=source_chat_id,
+                            reply_to=topic_id
+                        )
+                    except Exception:
+                        result = await self.client.forward_messages(
+                            target_group_id,
+                            message,
+                            from_peer=source_chat_id
+                        )
+            else:
+                result = await self.client.forward_messages(
+                    target_group_id,
+                    message,
+                    from_peer=source_chat_id
+                )
+            
+            self.forwarded_count += 1
+            logger.info(f"[RETRY_SUCCESS] Successfully forwarded after flood wait to {target_entity.title}")
+            
+        except Exception as retry_e:
+            logger.error(f"[RETRY_FAIL] Failed to forward after flood wait: {retry_e}")
+    
+    def get_media_type(self, message):
+        """Get human-readable media type"""
+        if not message.media:
+            return "Text only"
+        elif isinstance(message.media, MessageMediaPhoto):
+            return "Photo"
+        elif isinstance(message.media, MessageMediaDocument):
+            if message.media.document.mime_type.startswith('video/'):
+                return "Video"
+            elif message.media.document.mime_type.startswith('audio/'):
+                return "Audio"
+            else:
+                return "Document"
+        else:
+            return "Other media"
+    
+    async def run(self):
+        """Main run loop"""
+        await self.start()
+        try:
             await self.client.run_until_disconnected()
-            
+        except KeyboardInterrupt:
+            logger.info("[STOP] Bot stopped by user")
         except Exception as e:
-            logger.error(f"Error in message listener: {e}")
-    
-    async def disconnect(self):
-        """Disconnect the client"""
-        await self.client.disconnect()
-        logger.info("Client disconnected")
+            logger.error(f"[CRASH] Bot crashed: {e}")
+        finally:
+            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Errors: {self.error_count}")
 
 async def main():
     """Main function"""
     forwarder = TelegramForwarder()
+    await forwarder.run()
+
+if __name__ == "__main__":
+    print("[START] Starting Telegram Message Forwarder...")
+    print("[CONFIG] Configuration loaded:")
+    print(f"   From config.py: API_ID, API_HASH, PHONE_NUMBER, SOURCE_TO_TOPIC_MAPPING")
+    print(f"   From Railway env: TELEGRAM_SESSION_STRING")
+    print(f"   API_ID: {'*' * len(str(API_ID))}")
+    print(f"   API_HASH: {'*' * len(API_HASH)}")
+    print(f"   PHONE_NUMBER: {PHONE_NUMBER}")
+    print(f"   SESSION_STRING: {'Present' if SESSION_STRING else 'Missing'}")
+    print(f"   Source chats with topic mappings: {len(SOURCE_TO_TOPIC_MAPPING)}")
+    
+    # Show detailed mapping information
+    for source_id, mappings in SOURCE_TO_TOPIC_MAPPING.items():
+        print(f"   Source {source_id} -> {len(mappings)} target topics")
+    
+    print("=" * 60)
     
     try:
-        # Start the client
-        if not await forwarder.start():
-            return
-        
-        # Test channel access (replace with your channel ID)
-        channel_id = 2210132078  # Your channel ID
-        channel_info = await forwarder.get_channel_info(channel_id)
-        
-        if channel_info:
-            logger.info("Channel access successful!")
-            # Add your main bot logic here
-            # await forwarder.listen_for_messages(channel_id)
-        else:
-            logger.error("Failed to access channel")
-    
+        asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+        print("\n[EXIT] Goodbye!")
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-    finally:
-        await forwarder.disconnect()
-
-if __name__ == '__main__':
-    asyncio.run(main())
+        print(f"[FATAL] Fatal error: {e}")
