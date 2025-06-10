@@ -4,15 +4,6 @@ import os
 API_ID = '21637014'
 API_HASH = '410955dedb8c4b1628eb41df366762c6'
 PHONE_NUMBER = '+18126979150'
-# Mapping structure: Source chat ID -> Target groups with their topics
-# SOURCE_TO_TOPIC_MAPPING = {
-#     source_chat_id: {
-#         target_group_id: topic_id,  # Use topic_id from forum topics, or None for general chat
-#         target_group_id2: topic_id2,
-#         # ... more target groups
-#     },
-#     # ... more source chats
-# }
 
 SOURCE_TO_TOPIC_MAPPING = {
     # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
@@ -169,20 +160,19 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
     }, 
 
-     # RainsTEAM: Messages from "RainsTEAM" source channel
+    # RainsTEAM: Messages from "RainsTEAM" source channel
     -1001738096535: {   # RainsTEAM source channel ID
-        -1002756711574: 153,     # Bonus Codes (Topic ID)
+        -1002756711574: 153,    # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
     },
 
-     # EmpireDrop: Messages from "EmpireDrop" source channel
+    # EmpireDrop: Messages from "EmpireDrop" source channel
     -1002069575599: {   # EmpireDrop source channel ID
-        -1002756711574: 277,     # Bonus Codes (Topic ID)
+        -1002756711574: 277,    # Bonus Codes (Topic ID)
         -1002027750840: 501,    # TipMeTips (Bonus Codes)
         -1002210132078: None,   # Hotmamajess's Playground (No Topic)
     }
-    
 }
 
 # Legacy configuration (kept for backwards compatibility, but not used in new version)
