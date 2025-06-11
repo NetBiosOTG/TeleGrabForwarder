@@ -1,10 +1,11 @@
 # telegram_forwarder.py
 import asyncio
 import logging
+import sys
 from datetime import datetime
 import random
 from telethon import TelegramClient, events
-from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
+from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError, SessionPasswordNeededError
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 from telethon.tl.functions.messages import ForwardMessagesRequest
 import config
@@ -27,9 +28,52 @@ class TelegramForwarder:
         self.error_count = 0
         
     async def start(self):
-        """Initialize and start the userbot"""
+        """Initialize and start the userbot with proper authentication handling"""
         try:
-            await self.client.start(phone=config.PHONE_NUMBER)
+            # Connect to Telegram
+            await self.client.connect()
+            
+            # Check if we're already authorized
+            if not await self.client.is_user_authorized():
+                logger.info("[AUTH] User not authorized, starting authentication process...")
+                
+                # Send code request
+                try:
+                    await self.client.send_code_request(config.PHONE_NUMBER)
+                    logger.info(f"[AUTH] Code sent to {config.PHONE_NUMBER}")
+                    
+                    # Get code from user input
+                    if sys.stdin.isatty():
+                        # Running in interactive mode
+                        code = input("Please enter the code you received: ")
+                    else:
+                        # Running in non-interactive mode (like a service)
+                        logger.error("[AUTH] Cannot get verification code in non-interactive mode!")
+                        logger.error("[AUTH] Please run this script interactively first to authenticate.")
+                        logger.error("[AUTH] After successful authentication, the session will be saved.")
+                        raise Exception("Authentication required - run interactively first")
+                    
+                    # Sign in with the code
+                    try:
+                        await self.client.sign_in(config.PHONE_NUMBER, code)
+                        logger.info("[AUTH] Successfully signed in with code!")
+                    except SessionPasswordNeededError:
+                        # Two-factor authentication is enabled
+                        logger.info("[AUTH] Two-factor authentication detected")
+                        if sys.stdin.isatty():
+                            password = input("Please enter your 2FA password: ")
+                            await self.client.sign_in(password=password)
+                            logger.info("[AUTH] Successfully signed in with 2FA!")
+                        else:
+                            logger.error("[AUTH] 2FA required but running in non-interactive mode!")
+                            raise Exception("2FA authentication required - run interactively first")
+                            
+                except Exception as auth_error:
+                    logger.error(f"[AUTH] Authentication failed: {auth_error}")
+                    raise
+            else:
+                logger.info("[AUTH] Already authorized from saved session")
+            
             logger.info("[SUCCESS] Userbot started successfully!")
             
             # Get and log bot info
@@ -177,13 +221,13 @@ class TelegramForwarder:
                     logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
                     
                     try:
-                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id (FIXED)
+                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
                         result = await self.client(ForwardMessagesRequest(
                             from_peer=await self.client.get_input_entity(source_chat_id),
                             msg_ids=[message.id],
                             to_peer=await self.client.get_input_entity(target_group_id),
                             reply_to_msg_id=topic_id,
-                            random_id=[self.generate_random_id()],  # Fixed: Use our own random ID generator
+                            random_id=[self.generate_random_id()],
                             drop_author=False,
                             drop_media_captions=False
                         ))
@@ -194,7 +238,7 @@ class TelegramForwarder:
                         logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
                         
                         try:
-                            # Method 2: Try using send_message with forwarded content (IMPROVED)
+                            # Method 2: Try using send_message with forwarded content
                             if message.media:
                                 # For media messages, download and re-upload
                                 result = await self.client.send_message(
