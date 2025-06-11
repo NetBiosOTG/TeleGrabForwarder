@@ -4,6 +4,7 @@ import os
 API_ID = '21637014'
 API_HASH = '410955dedb8c4b1628eb41df366762c6'
 PHONE_NUMBER = '+18126979150'
+
 # Mapping structure: Source chat ID -> Target groups with their topics
 # SOURCE_TO_TOPIC_MAPPING = {
 #     source_chat_id: {
@@ -72,7 +73,7 @@ SOURCE_TO_TOPIC_MAPPING = {
 
     # Goated.com: Messages from "Goated.com" source channel
     -1002434383104: {   # Goated.com source channel ID
-        -1002756711574: 28,     # Bonus Codes (Topic ID
+        -1002756711574: 28,     # Bonus Codes (Topic ID)
     },
 
     # Stake.com - Play Smarter: Messages from "Stake.com - Play Smarter" source channel
@@ -131,7 +132,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
      # EmpireDrop: Messages from "EmpireDrop" source channel
-    -1001738096535: {   # EmpireDrop source channel ID
+    -1001958712439: {   # EmpireDrop source channel ID (FIXED - was duplicate)
         -1002756711574: 277,     # Bonus Codes (Topic ID)
     }
 }
