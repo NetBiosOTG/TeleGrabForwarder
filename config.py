@@ -3,27 +3,23 @@ import os
 # Your Telegram API credentials
 API_ID = '21637014'
 API_HASH = '410955dedb8c4b1628eb41df366762c6'
-PHONE_NUMBER = '+18126979150'
 
-# Mapping structure: Source chat ID -> Target groups with their topics
-# SOURCE_TO_TOPIC_MAPPING = {
-#     source_chat_id: {
-#         target_group_id: topic_id,  # Use topic_id from forum topics, or None for general chat
-#         target_group_id2: topic_id2,
-#         # ... more target groups
-#     },
-#     # ... more source chats
-# }
+# Session string instead of phone number
+# To generate a session string, run the session_generator.py script first
+TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING', '')
+
+# Legacy phone number (kept for session generation only)
+PHONE_NUMBER = '+18126979150'
 
 SOURCE_TO_TOPIC_MAPPING = {
     # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
     -1001892037773: {   # MetaWin.com MAIN TG source channel ID
-        -1002756711574: 36,     # Bonus Codes (Topic ID)
+        -1002756711574: 325,     # Bonus Codes (Topic ID)
     },
 
     # Shuffle.com - Bonus Code VIP: Messages from "Shuffle.com - Bonus Code VIP" source channel
     -1002185512641: {   # Shuffle.com - Bonus Code VIP source channel ID
-       -1002756711574: 8,      # Bonus Codes (Topic ID)
+        -1002756711574: 8,      # Bonus Codes (Topic ID)
     },
 
     # Winna.com - Winna Casino: Messages from "Winna.com - Winna Casino" source channel
@@ -126,14 +122,14 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002756711574: 24,     # Bonus Codes (Topic ID)
     }, 
 
-     # RainsTEAM: Messages from "RainsTEAM" source channel
+    # RainsTEAM: Messages from "RainsTEAM" source channel
     -1001738096535: {   # RainsTEAM source channel ID
-        -1002756711574: 153,     # Bonus Codes (Topic ID)
+        -1002756711574: 153,    # Bonus Codes (Topic ID)
     },
 
-     # EmpireDrop: Messages from "EmpireDrop" source channel
-    -1001958712439: {   # EmpireDrop source channel ID (FIXED - was duplicate)
-        -1002756711574: 277,     # Bonus Codes (Topic ID)
+    # EmpireDrop: Messages from "EmpireDrop" source channel
+    -1002069575599: {   # EmpireDrop source channel ID
+        -1002756711574: 277,    # Bonus Codes (Topic ID)
     }
 }
 
