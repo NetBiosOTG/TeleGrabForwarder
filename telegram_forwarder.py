@@ -289,4 +289,85 @@ class TelegramForwarder:
                 import traceback
                 logger.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
     
-    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target
+    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
+        """Retry forwarding after flood wait"""
+        try:
+            if topic_id:
+                # Retry forwarding to specific topic
+                result = await self.client(ForwardMessagesRequest(
+                    from_peer=await self.client.get_input_entity(source_chat_id),
+                    msg_ids=[message.id],
+                    to_peer=await self.client.get_input_entity(target_group_id),
+                    reply_to_msg_id=topic_id,
+                    random_id=[self.generate_random_id()],
+                    drop_author=False,
+                    drop_media_captions=False
+                ))
+            else:
+                # Retry forwarding to general chat
+                result = await self.client.forward_messages(
+                    target_group_id,
+                    message,
+                    from_peer=source_chat_id
+                )
+            
+            self.forwarded_count += 1
+            topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
+            logger.info(f"[RETRY_SUCCESS] Message forwarded successfully after retry:")
+            logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
+            logger.info(f"   Total forwarded: {self.forwarded_count}")
+            
+        except Exception as e:
+            self.error_count += 1
+            logger.error(f"[RETRY_FAIL] Retry failed for {target_group_id}: {e}")
+    
+    def get_media_type(self, message):
+        """Get media type description for logging"""
+        if not message.media:
+            return "Text only"
+        elif isinstance(message.media, MessageMediaPhoto):
+            return "Photo"
+        elif isinstance(message.media, MessageMediaDocument):
+            if message.media.document:
+                if message.media.document.mime_type:
+                    if 'video' in message.media.document.mime_type:
+                        return "Video"
+                    elif 'audio' in message.media.document.mime_type:
+                        return "Audio"
+                    elif 'image' in message.media.document.mime_type:
+                        return "Image/GIF"
+                    else:
+                        return f"Document ({message.media.document.mime_type})"
+                return "Document"
+            return "Document"
+        else:
+            return f"Other media ({type(message.media).__name__})"
+    
+    async def run_forever(self):
+        """Keep the bot running"""
+        try:
+            logger.info("[RUNNING] Bot is running... Press Ctrl+C to stop")
+            await self.client.run_until_disconnected()
+        except KeyboardInterrupt:
+            logger.info("[STOP] Bot stopped by user")
+        except Exception as e:
+            logger.error(f"[ERROR] Bot crashed: {e}")
+            raise
+        finally:
+            await self.client.disconnect()
+            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Errors: {self.error_count}")
+
+async def main():
+    """Main entry point"""
+    forwarder = TelegramForwarder()
+    
+    try:
+        await forwarder.start()
+        await forwarder.run_forever()
+    except Exception as e:
+        logger.error(f"[FATAL] Application failed to start: {e}")
+        import traceback
+        logger.error(f"[FATAL] Traceback: {traceback.format_exc()}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
