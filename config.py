@@ -57,11 +57,6 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002756711574: 30,     # Bonus Codes (Topic ID)
     },
 
-    # Staxx Boosts: Messages from "Staxx Boosts" source channel
-    -1002378946187: {   # Staxx Boosts source channel ID
-        -1002756711574: 49,     # Bonus Codes (Topic ID)
-    },
-
     # Shuffle Sports: Messages from "Shuffle Sports" source channel
     -1002109995475: {   # Shuffle Sports source channel ID
         -1002756711574: 12,     # Bonus Codes (Topic ID)
