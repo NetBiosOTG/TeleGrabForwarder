@@ -197,14 +197,14 @@ class TelegramForwarder:
                     logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
                     
                     try:
-                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
+                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id and drop_author=True
                         result = await self.client(ForwardMessagesRequest(
                             from_peer=await self.client.get_input_entity(source_chat_id),
                             msg_ids=[message.id],
                             to_peer=await self.client.get_input_entity(target_group_id),
                             reply_to_msg_id=topic_id,
                             random_id=[self.generate_random_id()],
-                            drop_author=False,
+                            drop_author=True,  # This removes the "Forwarded from" attribution
                             drop_media_captions=False
                         ))
                         success = True
@@ -214,21 +214,20 @@ class TelegramForwarder:
                         logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
                         
                         try:
-                            # Method 2: Try using send_message with forwarded content
+                            # Method 2: Try using send_message with original content (no forwarding text)
                             if message.media:
-                                # For media messages, download and re-upload
+                                # For media messages, send with original caption
                                 result = await self.client.send_message(
                                     entity=target_group_id,
-                                    message=message.text or "[Forwarded media]",
+                                    message=message.text or "",
                                     reply_to=topic_id,
                                     file=message.media
                                 )
                             else:
-                                # For text messages, send the text
-                                forwarded_text = f"🔄 Forwarded from {source_chat.title}:\n\n{message.text}"
+                                # For text messages, send the original text
                                 result = await self.client.send_message(
                                     entity=target_group_id,
-                                    message=forwarded_text,
+                                    message=message.text or "",
                                     reply_to=topic_id
                                 )
                             success = True
@@ -238,25 +237,31 @@ class TelegramForwarder:
                             logger.warning(f"[TOPIC_FAIL] Method 2 failed: {e2}")
                             
                             try:
-                                # Method 3: Simple forward without topic (FALLBACK)
-                                result = await self.client.forward_messages(
-                                    target_group_id,
-                                    message,
-                                    from_peer=source_chat_id
-                                )
+                                # Method 3: Simple forward without topic but with drop_author=True (FALLBACK)
+                                result = await self.client(ForwardMessagesRequest(
+                                    from_peer=await self.client.get_input_entity(source_chat_id),
+                                    msg_ids=[message.id],
+                                    to_peer=await self.client.get_input_entity(target_group_id),
+                                    random_id=[self.generate_random_id()],
+                                    drop_author=True,  # Remove forwarding attribution
+                                    drop_media_captions=False
+                                ))
                                 success = True
                                 logger.info(f"[FALLBACK_SUCCESS] Forwarded to general chat (topic forward failed)")
                                 
                             except Exception as e3:
                                 logger.error(f"[TOPIC_FAIL] All methods failed: {e3}")
                 else:
-                    # Forward to general chat (no topic)
+                    # Forward to general chat (no topic) with drop_author=True
                     logger.info(f"[FORWARD_ATTEMPT] Forwarding to general chat in {target_entity.title}")
-                    result = await self.client.forward_messages(
-                        target_group_id,
-                        message,
-                        from_peer=source_chat_id
-                    )
+                    result = await self.client(ForwardMessagesRequest(
+                        from_peer=await self.client.get_input_entity(source_chat_id),
+                        msg_ids=[message.id],
+                        to_peer=await self.client.get_input_entity(target_group_id),
+                        random_id=[self.generate_random_id()],
+                        drop_author=True,  # Remove forwarding attribution
+                        drop_media_captions=False
+                    ))
                     success = True
                 
                 if success:
@@ -293,23 +298,26 @@ class TelegramForwarder:
         """Retry forwarding after flood wait"""
         try:
             if topic_id:
-                # Retry forwarding to specific topic
+                # Retry forwarding to specific topic with drop_author=True
                 result = await self.client(ForwardMessagesRequest(
                     from_peer=await self.client.get_input_entity(source_chat_id),
                     msg_ids=[message.id],
                     to_peer=await self.client.get_input_entity(target_group_id),
                     reply_to_msg_id=topic_id,
                     random_id=[self.generate_random_id()],
-                    drop_author=False,
+                    drop_author=True,  # Remove forwarding attribution
                     drop_media_captions=False
                 ))
             else:
-                # Retry forwarding to general chat
-                result = await self.client.forward_messages(
-                    target_group_id,
-                    message,
-                    from_peer=source_chat_id
-                )
+                # Retry forwarding to general chat with drop_author=True
+                result = await self.client(ForwardMessagesRequest(
+                    from_peer=await self.client.get_input_entity(source_chat_id),
+                    msg_ids=[message.id],
+                    to_peer=await self.client.get_input_entity(target_group_id),
+                    random_id=[self.generate_random_id()],
+                    drop_author=True,  # Remove forwarding attribution
+                    drop_media_captions=False
+                ))
             
             self.forwarded_count += 1
             topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
