@@ -6,7 +6,6 @@ import random
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
-from telethon.tl.functions.messages import ForwardMessagesRequest
 from telethon.sessions import StringSession
 import config
 
@@ -132,10 +131,6 @@ class TelegramForwarder:
             logger.error(f"[ERROR] Unknown peer type: {type(peer)}")
             return None
     
-    def generate_random_id(self):
-        """Generate a random ID for Telegram requests"""
-        return random.randint(1, 2**63 - 1)
-    
     async def handle_new_message(self, event):
         """Handle new messages from source chats"""
         try:
@@ -168,8 +163,8 @@ class TelegramForwarder:
                 logger.warning(f"[NO_MAPPING] No mapping found for source chat {source_chat_id}")
                 logger.info(f"[DEBUG] Available source chat IDs in config: {list(config.SOURCE_TO_TOPIC_MAPPING.keys())}")
             
-            # Forward to mapped target topics
-            await self.forward_to_mapped_topics(message, source_chat, source_chat_id)
+            # Forward to mapped target topics (completely anonymously)
+            await self.forward_anonymously(message, source_chat, source_chat_id)
             
         except Exception as e:
             self.error_count += 1
@@ -177,109 +172,84 @@ class TelegramForwarder:
             import traceback
             logger.error(f"[ERROR] Traceback: {traceback.format_exc()}")
     
-    async def forward_to_mapped_topics(self, message, source_chat, source_chat_id):
-        """Forward message to mapped target topics based on source chat"""
+    async def forward_anonymously(self, message, source_chat, source_chat_id):
+        """Forward message completely anonymously - no trace of original source"""
         # Get the mapping for this source chat
         if source_chat_id not in config.SOURCE_TO_TOPIC_MAPPING:
             logger.warning(f"[SKIP] No mapping found for source chat {source_chat_id}")
             return
         
         mappings = config.SOURCE_TO_TOPIC_MAPPING[source_chat_id]
-        logger.info(f"[FORWARD_START] Processing {len(mappings)} target mappings for source {source_chat_id}")
+        logger.info(f"[ANONYMOUS_FORWARD] Processing {len(mappings)} target mappings for source {source_chat_id}")
         
         for target_group_id, topic_id in mappings.items():
             try:
                 target_entity = await self.client.get_entity(target_group_id)
                 success = False
                 
-                if topic_id:
-                    # Forward to specific topic in the group
-                    logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
-                    
+                # Always send as a new message to completely hide the source
+                logger.info(f"[ANONYMOUS_FORWARD] Sending anonymous message to {target_entity.title}")
+                
+                if message.media:
+                    # Download media first, then send as new message
                     try:
-                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id and drop_author=True
-                        result = await self.client(ForwardMessagesRequest(
-                            from_peer=await self.client.get_input_entity(source_chat_id),
-                            msg_ids=[message.id],
-                            to_peer=await self.client.get_input_entity(target_group_id),
-                            reply_to_msg_id=topic_id,
-                            random_id=[self.generate_random_id()],
-                            drop_author=True,  # This removes the "Forwarded from" attribution
-                            drop_media_captions=False
-                        ))
+                        # Download the media file
+                        media_file = await message.download_media(file=bytes)
+                        
+                        # Send as new message with media
+                        result = await self.client.send_message(
+                            entity=target_group_id,
+                            message=message.text or "",
+                            reply_to=topic_id if topic_id else None,
+                            file=media_file
+                        )
                         success = True
-                        logger.info(f"[TOPIC_SUCCESS] Method 1 (ForwardMessagesRequest) succeeded")
+                        logger.info(f"[ANONYMOUS_SUCCESS] Media message sent anonymously")
                         
-                    except Exception as e1:
-                        logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
+                    except Exception as media_error:
+                        logger.error(f"[MEDIA_ERROR] Failed to process media: {media_error}")
                         
-                        try:
-                            # Method 2: Try using send_message with original content (no forwarding text)
-                            if message.media:
-                                # For media messages, send with original caption
-                                result = await self.client.send_message(
-                                    entity=target_group_id,
-                                    message=message.text or "",
-                                    reply_to=topic_id,
-                                    file=message.media
-                                )
-                            else:
-                                # For text messages, send the original text
-                                result = await self.client.send_message(
-                                    entity=target_group_id,
-                                    message=message.text or "",
-                                    reply_to=topic_id
-                                )
-                            success = True
-                            logger.info(f"[TOPIC_SUCCESS] Method 2 (send_message) succeeded")
-                            
-                        except Exception as e2:
-                            logger.warning(f"[TOPIC_FAIL] Method 2 failed: {e2}")
-                            
+                        # Fallback: try to send just the text if media fails
+                        if message.text:
                             try:
-                                # Method 3: Simple forward without topic but with drop_author=True (FALLBACK)
-                                result = await self.client(ForwardMessagesRequest(
-                                    from_peer=await self.client.get_input_entity(source_chat_id),
-                                    msg_ids=[message.id],
-                                    to_peer=await self.client.get_input_entity(target_group_id),
-                                    random_id=[self.generate_random_id()],
-                                    drop_author=True,  # Remove forwarding attribution
-                                    drop_media_captions=False
-                                ))
+                                result = await self.client.send_message(
+                                    entity=target_group_id,
+                                    message=message.text,
+                                    reply_to=topic_id if topic_id else None
+                                )
                                 success = True
-                                logger.info(f"[FALLBACK_SUCCESS] Forwarded to general chat (topic forward failed)")
-                                
-                            except Exception as e3:
-                                logger.error(f"[TOPIC_FAIL] All methods failed: {e3}")
+                                logger.info(f"[ANONYMOUS_SUCCESS] Text-only message sent (media failed)")
+                            except Exception as text_error:
+                                logger.error(f"[TEXT_ERROR] Failed to send text fallback: {text_error}")
                 else:
-                    # Forward to general chat (no topic) with drop_author=True
-                    logger.info(f"[FORWARD_ATTEMPT] Forwarding to general chat in {target_entity.title}")
-                    result = await self.client(ForwardMessagesRequest(
-                        from_peer=await self.client.get_input_entity(source_chat_id),
-                        msg_ids=[message.id],
-                        to_peer=await self.client.get_input_entity(target_group_id),
-                        random_id=[self.generate_random_id()],
-                        drop_author=True,  # Remove forwarding attribution
-                        drop_media_captions=False
-                    ))
-                    success = True
+                    # Send text message
+                    if message.text:
+                        result = await self.client.send_message(
+                            entity=target_group_id,
+                            message=message.text,
+                            reply_to=topic_id if topic_id else None
+                        )
+                        success = True
+                        logger.info(f"[ANONYMOUS_SUCCESS] Text message sent anonymously")
+                    else:
+                        logger.warning(f"[SKIP] Empty message with no media - nothing to forward")
                 
                 if success:
                     self.forwarded_count += 1
                     
                     # Verbose success logging
                     topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
-                    logger.info(f"[FORWARD_SUCCESS] Message forwarded successfully:")
-                    logger.info(f"   From: {source_chat.title} (ID: {source_chat_id})")
+                    logger.info(f"[ANONYMOUS_SUCCESS] Message sent anonymously:")
+                    logger.info(f"   From: {source_chat.title} (ID: {source_chat_id}) [HIDDEN]")
                     logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
-                    logger.info(f"   Original message ID: {message.id}")
+                    logger.info(f"   Original message ID: {message.id} [NOT PRESERVED]")
                     logger.info(f"   Total forwarded: {self.forwarded_count}")
                 
             except FloodWaitError as e:
                 logger.warning(f"[WAIT] Flood wait error: Need to wait {e.seconds} seconds")
                 await asyncio.sleep(e.seconds)
                 # Retry after waiting
-                await self.retry_forward(message, source_chat_id, target_group_id, topic_id, target_entity)
+                await self.retry_anonymous_forward(message, source_chat_id, target_group_id, topic_id, target_entity)
                 
             except ChatAdminRequiredError:
                 logger.error(f"[PERM] Admin rights required for group {target_group_id}")
@@ -289,45 +259,40 @@ class TelegramForwarder:
                 
             except Exception as e:
                 self.error_count += 1
-                logger.error(f"[FAIL] Failed to forward to {target_group_id} topic {topic_id}: {e}")
+                logger.error(f"[FAIL] Failed to send anonymous message to {target_group_id} topic {topic_id}: {e}")
                 logger.error(f"[DEBUG] Error type: {type(e).__name__}")
                 import traceback
                 logger.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
     
-    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
-        """Retry forwarding after flood wait"""
+    async def retry_anonymous_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
+        """Retry anonymous forwarding after flood wait"""
         try:
-            if topic_id:
-                # Retry forwarding to specific topic with drop_author=True
-                result = await self.client(ForwardMessagesRequest(
-                    from_peer=await self.client.get_input_entity(source_chat_id),
-                    msg_ids=[message.id],
-                    to_peer=await self.client.get_input_entity(target_group_id),
-                    reply_to_msg_id=topic_id,
-                    random_id=[self.generate_random_id()],
-                    drop_author=True,  # Remove forwarding attribution
-                    drop_media_captions=False
-                ))
+            if message.media:
+                # Download and send media
+                media_file = await message.download_media(file=bytes)
+                result = await self.client.send_message(
+                    entity=target_group_id,
+                    message=message.text or "",
+                    reply_to=topic_id if topic_id else None,
+                    file=media_file
+                )
             else:
-                # Retry forwarding to general chat with drop_author=True
-                result = await self.client(ForwardMessagesRequest(
-                    from_peer=await self.client.get_input_entity(source_chat_id),
-                    msg_ids=[message.id],
-                    to_peer=await self.client.get_input_entity(target_group_id),
-                    random_id=[self.generate_random_id()],
-                    drop_author=True,  # Remove forwarding attribution
-                    drop_media_captions=False
-                ))
+                # Send text message
+                result = await self.client.send_message(
+                    entity=target_group_id,
+                    message=message.text or "",
+                    reply_to=topic_id if topic_id else None
+                )
             
             self.forwarded_count += 1
             topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
-            logger.info(f"[RETRY_SUCCESS] Message forwarded successfully after retry:")
+            logger.info(f"[RETRY_SUCCESS] Anonymous message sent successfully after retry:")
             logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
             logger.info(f"   Total forwarded: {self.forwarded_count}")
             
         except Exception as e:
             self.error_count += 1
-            logger.error(f"[RETRY_FAIL] Retry failed for {target_group_id}: {e}")
+            logger.error(f"[RETRY_FAIL] Anonymous retry failed for {target_group_id}: {e}")
     
     def get_media_type(self, message):
         """Get media type description for logging"""
@@ -354,7 +319,7 @@ class TelegramForwarder:
     async def run_forever(self):
         """Keep the bot running"""
         try:
-            logger.info("[RUNNING] Bot is running... Press Ctrl+C to stop")
+            logger.info("[RUNNING] Anonymous forwarder is running... Press Ctrl+C to stop")
             await self.client.run_until_disconnected()
         except KeyboardInterrupt:
             logger.info("[STOP] Bot stopped by user")
