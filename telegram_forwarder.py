@@ -7,6 +7,7 @@ from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 from telethon.tl.functions.messages import ForwardMessagesRequest
+from telethon.sessions import StringSession
 import config
 
 # Set up detailed logging with UTF-8 encoding
@@ -22,15 +23,32 @@ logger = logging.getLogger(__name__)
 
 class TelegramForwarder:
     def __init__(self):
-        self.client = TelegramClient('forwarder_session', config.API_ID, config.API_HASH)
+        # Initialize client with session string
+        if config.TELEGRAM_SESSION_STRING:
+            logger.info("[INIT] Using session string authentication")
+            self.client = TelegramClient(
+                StringSession(config.TELEGRAM_SESSION_STRING), 
+                config.API_ID, 
+                config.API_HASH
+            )
+        else:
+            logger.warning("[INIT] No session string found, falling back to phone authentication")
+            self.client = TelegramClient('forwarder_session', config.API_ID, config.API_HASH)
+        
         self.forwarded_count = 0
         self.error_count = 0
         
     async def start(self):
         """Initialize and start the userbot"""
         try:
-            await self.client.start(phone=config.PHONE_NUMBER)
-            logger.info("[SUCCESS] Userbot started successfully!")
+            if config.TELEGRAM_SESSION_STRING:
+                # Start with session string (no phone needed)
+                await self.client.start()
+                logger.info("[SUCCESS] Userbot started with session string!")
+            else:
+                # Fallback to phone authentication
+                await self.client.start(phone=config.PHONE_NUMBER)
+                logger.info("[SUCCESS] Userbot started with phone authentication!")
             
             # Get and log bot info
             me = await self.client.get_me()
@@ -51,6 +69,8 @@ class TelegramForwarder:
             
         except Exception as e:
             logger.error(f"[ERROR] Failed to start userbot: {e}")
+            if not config.TELEGRAM_SESSION_STRING:
+                logger.error("[HINT] Try generating a session string using session_generator.py")
             raise
     
     async def verify_chats(self):
@@ -177,13 +197,13 @@ class TelegramForwarder:
                     logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
                     
                     try:
-                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id (FIXED)
+                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
                         result = await self.client(ForwardMessagesRequest(
                             from_peer=await self.client.get_input_entity(source_chat_id),
                             msg_ids=[message.id],
                             to_peer=await self.client.get_input_entity(target_group_id),
                             reply_to_msg_id=topic_id,
-                            random_id=[self.generate_random_id()],  # Fixed: Use our own random ID generator
+                            random_id=[self.generate_random_id()],
                             drop_author=False,
                             drop_media_captions=False
                         ))
@@ -194,7 +214,7 @@ class TelegramForwarder:
                         logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
                         
                         try:
-                            # Method 2: Try using send_message with forwarded content (IMPROVED)
+                            # Method 2: Try using send_message with forwarded content
                             if message.media:
                                 # For media messages, download and re-upload
                                 result = await self.client.send_message(
@@ -269,95 +289,4 @@ class TelegramForwarder:
                 import traceback
                 logger.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
     
-    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
-        """Retry forwarding after flood wait"""
-        try:
-            if topic_id:
-                # Try the improved methods
-                try:
-                    result = await self.client(ForwardMessagesRequest(
-                        from_peer=await self.client.get_input_entity(source_chat_id),
-                        msg_ids=[message.id],
-                        to_peer=await self.client.get_input_entity(target_group_id),
-                        reply_to_msg_id=topic_id,
-                        random_id=[self.generate_random_id()],
-                        drop_author=False,
-                        drop_media_captions=False
-                    ))
-                except Exception:
-                    try:
-                        result = await self.client.send_message(
-                            entity=target_group_id,
-                            message=message.text or "[Forwarded media]",
-                            reply_to=topic_id,
-                            file=message.media if message.media else None
-                        )
-                    except Exception:
-                        result = await self.client.forward_messages(
-                            target_group_id,
-                            message,
-                            from_peer=source_chat_id
-                        )
-            else:
-                result = await self.client.forward_messages(
-                    target_group_id,
-                    message,
-                    from_peer=source_chat_id
-                )
-            
-            self.forwarded_count += 1
-            logger.info(f"[RETRY_SUCCESS] Successfully forwarded after flood wait to {target_entity.title}")
-            
-        except Exception as retry_e:
-            logger.error(f"[RETRY_FAIL] Failed to forward after flood wait: {retry_e}")
-    
-    def get_media_type(self, message):
-        """Get human-readable media type"""
-        if not message.media:
-            return "Text only"
-        elif isinstance(message.media, MessageMediaPhoto):
-            return "Photo"
-        elif isinstance(message.media, MessageMediaDocument):
-            if message.media.document.mime_type.startswith('video/'):
-                return "Video"
-            elif message.media.document.mime_type.startswith('audio/'):
-                return "Audio"
-            else:
-                return "Document"
-        else:
-            return "Other media"
-    
-    async def run(self):
-        """Main run loop"""
-        await self.start()
-        try:
-            await self.client.run_until_disconnected()
-        except KeyboardInterrupt:
-            logger.info("[STOP] Bot stopped by user")
-        except Exception as e:
-            logger.error(f"[CRASH] Bot crashed: {e}")
-        finally:
-            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Errors: {self.error_count}")
-
-async def main():
-    """Main function"""
-    forwarder = TelegramForwarder()
-    await forwarder.run()
-
-if __name__ == "__main__":
-    print("[START] Starting Telegram Message Forwarder...")
-    print("[CONFIG] Configuration loaded:")
-    print(f"   Source chats with topic mappings: {len(config.SOURCE_TO_TOPIC_MAPPING)}")
-    
-    # Show detailed mapping information
-    for source_id, mappings in config.SOURCE_TO_TOPIC_MAPPING.items():
-        print(f"   Source {source_id} -> {len(mappings)} target topics")
-    
-    print("=" * 60)
-    
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n[EXIT] Goodbye!")
-    except Exception as e:
-        print(f"[FATAL] Fatal error: {e}")
+    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target
