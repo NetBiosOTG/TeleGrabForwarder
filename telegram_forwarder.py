@@ -136,6 +136,22 @@ class TelegramForwarder:
         """Generate a random ID for Telegram requests"""
         return random.randint(1, 2**63 - 1)
     
+    def get_media_type(self, message):
+        """Get the media type of a message"""
+        if not message.media:
+            return "Text only"
+        elif isinstance(message.media, MessageMediaPhoto):
+            return "Photo"
+        elif isinstance(message.media, MessageMediaDocument):
+            if message.media.document.mime_type.startswith('video/'):
+                return "Video"
+            elif message.media.document.mime_type.startswith('audio/'):
+                return "Audio"
+            else:
+                return "Document"
+        else:
+            return "Other media"
+    
     async def handle_new_message(self, event):
         """Handle new messages from source chats"""
         try:
@@ -289,4 +305,53 @@ class TelegramForwarder:
                 import traceback
                 logger.error(f"[DEBUG] Traceback: {traceback.format_exc()}")
     
-    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target
+    async def retry_forward(self, message, source_chat_id, target_group_id, topic_id, target_entity):
+        """Retry forwarding a message after a flood wait"""
+        try:
+            if topic_id:
+                logger.info(f"[RETRY] Retrying forward to topic {topic_id} in {target_entity.title}")
+                result = await self.client(ForwardMessagesRequest(
+                    from_peer=await self.client.get_input_entity(source_chat_id),
+                    msg_ids=[message.id],
+                    to_peer=await self.client.get_input_entity(target_group_id),
+                    reply_to_msg_id=topic_id,
+                    random_id=[self.generate_random_id()],
+                    drop_author=False,
+                    drop_media_captions=False
+                ))
+            else:
+                logger.info(f"[RETRY] Retrying forward to general chat in {target_entity.title}")
+                result = await self.client.forward_messages(
+                    target_group_id,
+                    message,
+                    from_peer=source_chat_id
+                )
+            
+            self.forwarded_count += 1
+            topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
+            logger.info(f"[RETRY_SUCCESS] Message forwarded successfully after retry:")
+            logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
+            logger.info(f"   Total forwarded: {self.forwarded_count}")
+            
+        except Exception as e:
+            self.error_count += 1
+            logger.error(f"[RETRY_FAIL] Retry forward failed: {e}")
+    
+    async def run(self):
+        """Main run method"""
+        await self.start()
+        logger.info("[RUN] Telegram forwarder is running. Press Ctrl+C to stop.")
+        try:
+            await self.client.run_until_disconnected()
+        except KeyboardInterrupt:
+            logger.info("[STOP] Shutting down...")
+        finally:
+            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Errors: {self.error_count}")
+
+# Main execution
+async def main():
+    forwarder = TelegramForwarder()
+    await forwarder.run()
+
+if __name__ == "__main__":
+    asyncio.run(main())
