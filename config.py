@@ -12,8 +12,8 @@ TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING', '')
 PHONE_NUMBER = '+18126979150'
 
 SOURCE_TO_TOPIC_MAPPING = {
-    # MetaWin.com MAIN TG: Messages from "MetaWin.com MAIN TG" source channel
-    -1001892037773: {   # MetaWin.com MAIN TG source channel ID
+    # BOOST by Metawin: Messages from "BOOST by Metawin" source channel
+    -1002079157553: {   # BOOST by Metawin source channel ID
         -1002756711574: 325,     # Bonus Codes (Topic ID)
         -1002210132078: None,  # Hotamajess's Playground (No topics)
     },
