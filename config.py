@@ -137,8 +137,8 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002210132078: None,  # Hotamajess's Playground (No topics)
     }, 
 
-    # RainsTEAM: Messages from "RainsTEAM" source channel
-    -1001738096535: {   # RainsTEAM source channel ID
+    # Bonus Codes - Stake.com: Messages from "Bonus Codes - Stake.com" source channel
+   -1002239669640: {   # Bonus Codes - Stake.com source channel ID
         -1002756711574: 153,    # Bonus Codes (Topic ID)
         -1002210132078: None,  # Hotamajess's Playground (No topics)
     },
