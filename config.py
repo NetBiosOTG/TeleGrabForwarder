@@ -45,6 +45,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     # Stake.US Daily Drops 🇺🇸: Messages from "Stake.US Daily Drops 🇺🇸" source channel
     -1002133338932: {   # Stake.US Daily Drops 🇺🇸 source channel ID
         -1002756711574: 16,     # Bonus Codes (Topic ID)
+        -1002210132078: None,  # Hotamajess's Playground (No topics)
     },
 
     # BC.Game 🔔 Notifications: Messages from "BC.Game 🔔 Notifications" source channel
