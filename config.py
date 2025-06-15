@@ -42,8 +42,8 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002210132078: None,  # Hotamajess's Playground (No topics)
     },
 
-    # Stake.US Daily Drops 🇺🇸: Messages from "Stake.US Daily Drops 🇺🇸" source channel
-    -1002133338932: {   # Stake.US Daily Drops 🇺🇸 source channel ID
+    # Stake.US Daily Drops & HighRoller: Messages from "Stake.US Daily Drops 🇺🇸" source channel
+    -1002343155225: {   # Stake.US Daily Drops 🇺🇸 source channel ID
         -1002756711574: 16,     # Bonus Codes (Topic ID)
         -1002210132078: None,  # Hotamajess's Playground (No topics)
     },
@@ -129,12 +129,6 @@ SOURCE_TO_TOPIC_MAPPING = {
     # Sicodice Official Channel: Messages from "Sicodice Official Channel" source channel
     -1001677525545: {   # Sicodice Official Channel source channel ID
         -1002756711574: 46,     # Bonus Codes (Topic ID)
-    },
-
-    # High Rollers - Stake.US - (Unofficial): Messages from "High Rollers - Stake.US - (Unofficial)" source channel
-    -1002102309936: {   # High Rollers - Stake.US - (Unofficial) source channel ID
-        -1002756711574: 24,     # Bonus Codes (Topic ID)
-        -1002210132078: None,  # Hotamajess's Playground (No topics)
     }, 
 
     # Bonus Codes - Stake.com: Messages from "Bonus Codes - Stake.com" source channel
