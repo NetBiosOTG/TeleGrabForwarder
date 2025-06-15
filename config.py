@@ -25,8 +25,8 @@ SOURCE_TO_TOPIC_MAPPING = {
     # Winna.com - Winna Casino: Messages from "Winna.com - Winna Casino" source channel
     -1002472636693: {   # Winna.com - Winna Casino source channel ID
         -1002210132078: none #Hotmamajess's Playground (No Topic)
-    },-1002210132078: None,    # Hotmamajess's Playground (No Topic)
-
+    },
+    
     # ₿C Token Lounge: Messages from "₿C Token Lounge" source channel
     -1002249193735: {   # ₿C Token Lounge source channel ID
         -1002210132078: None,    # Hotmamajess's Playground (No Topic)
