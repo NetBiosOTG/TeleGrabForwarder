@@ -67,8 +67,8 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002210132078: None,    # Hotmamajess's Playground (No Topic)
     },
 
-    # Stake.com - Bonus Codes: Messages from "Stake.com - Bonus Codes" source channel
-    -1002239669640: {   # Stake.com - Bonus Codes source channel ID
+    # Stake.com Play Smarter: Messages from "Stake.com Play Smarter" source channel
+    -1002239669640: {   # Stake.com Play Smarter source channel ID
         -1002210132078: None,    # Hotmamajess's Playground (No Topic)
     },
 
