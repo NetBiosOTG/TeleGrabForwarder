@@ -1,15 +1,15 @@
 import os
 
 # Your Telegram API credentials
-API_ID = 'api_id'
-API_HASH = 'api_hash'
+API_ID = '21637014'
+API_HASH = '410955dedb8c4b1628eb41df366762c6'
 
 # Session string instead of phone number
 # To generate a session string, run the session_generator.py script first
 TELEGRAM_SESSION_STRING = os.getenv('TELEGRAM_SESSION_STRING', '')
 
 # Legacy phone number (kept for session generation only)
-PHONE_NUMBER = '+1234567890'
+PHONE_NUMBER = '+18126979150'
 
 SOURCE_TO_TOPIC_MAPPING = {
     # BOOST by MetaWin: Messages from "BOOST by MetaWin" source channel
