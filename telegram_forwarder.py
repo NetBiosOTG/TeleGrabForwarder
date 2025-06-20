@@ -3,6 +3,8 @@ import asyncio
 import logging
 from datetime import datetime
 import random
+import aiohttp
+import json
 from telethon import TelegramClient, events
 from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserBannedInChannelError
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
@@ -37,7 +39,57 @@ class TelegramForwarder:
         
         self.forwarded_count = 0
         self.error_count = 0
+        self.translation_count = 0
         
+        # Channels that need translation (Japanese to English)
+        self.translate_channels = {
+            -1002060359531: "ja",  # Shuffle JP ブースト - Japanese
+        }
+        
+    async def translate_text(self, text, source_lang="ja", target_lang="en"):
+        """Translate text using Google Translate API (free tier)"""
+        if not text or not text.strip():
+            return text
+            
+        try:
+            # Use Google Translate's free API endpoint
+            url = "https://translate.googleapis.com/translate_a/single"
+            params = {
+                'client': 'gtx',
+                'sl': source_lang,
+                'tl': target_lang,
+                'dt': 't',
+                'q': text
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        # Extract translated text from the response
+                        translated_text = ""
+                        if result and len(result) > 0 and len(result[0]) > 0:
+                            for translation in result[0]:
+                                if translation[0]:
+                                    translated_text += translation[0]
+                        
+                        if translated_text:
+                            self.translation_count += 1
+                            logger.info(f"[TRANSLATION] Successfully translated text:")
+                            logger.info(f"   Original: {text[:100]}{'...' if len(text) > 100 else ''}")
+                            logger.info(f"   Translated: {translated_text[:100]}{'...' if len(translated_text) > 100 else ''}")
+                            return translated_text
+                        else:
+                            logger.warning("[TRANSLATION] No translation returned, using original text")
+                            return text
+                    else:
+                        logger.error(f"[TRANSLATION] Translation API error: HTTP {response.status}")
+                        return text
+                        
+        except Exception as e:
+            logger.error(f"[TRANSLATION] Translation failed: {e}")
+            return text
+    
     async def start(self):
         """Initialize and start the userbot"""
         try:
@@ -83,7 +135,13 @@ class TelegramForwarder:
             try:
                 logger.info(f"[DEBUG] Checking source chat {i}/{len(config.SOURCE_TO_TOPIC_MAPPING)}: {source_chat_id}")
                 source_entity = await self.client.get_entity(source_chat_id)
-                logger.info(f"[OK] Source chat verified: {source_entity.title} (ID: {source_chat_id})")
+                
+                # Check if this channel needs translation
+                translation_info = ""
+                if source_chat_id in self.translate_channels:
+                    translation_info = f" [TRANSLATION: {self.translate_channels[source_chat_id]} → en]"
+                
+                logger.info(f"[OK] Source chat verified: {source_entity.title} (ID: {source_chat_id}){translation_info}")
                 
                 # Check each target group and topic for this source
                 for target_group_id, topic_id in mappings.items():
@@ -167,7 +225,8 @@ class TelegramForwarder:
             
             # Log incoming message details
             media_type = self.get_media_type(message)
-            logger.info(f"[MSG] New message received:")
+            translation_note = " [NEEDS TRANSLATION]" if source_chat_id in self.translate_channels else ""
+            logger.info(f"[MSG] New message received{translation_note}:")
             logger.info(f"   From: {source_chat.title} (ID: {source_chat_id})")
             logger.info(f"   Message ID: {message.id}")
             logger.info(f"   Media: {media_type}")
@@ -203,6 +262,13 @@ class TelegramForwarder:
         mappings = config.SOURCE_TO_TOPIC_MAPPING[source_chat_id]
         logger.info(f"[FORWARD_START] Processing {len(mappings)} target mappings for source {source_chat_id}")
         
+        # Check if this message needs translation
+        translated_text = None
+        if source_chat_id in self.translate_channels and message.text:
+            source_lang = self.translate_channels[source_chat_id]
+            logger.info(f"[TRANSLATION] Translating message from {source_lang} to English...")
+            translated_text = await self.translate_text(message.text, source_lang, "en")
+        
         for target_group_id, topic_id in mappings.items():
             try:
                 target_entity = await self.client.get_entity(target_group_id)
@@ -213,35 +279,73 @@ class TelegramForwarder:
                     logger.info(f"[FORWARD_ATTEMPT] Attempting to forward to topic {topic_id} in {target_entity.title}")
                     
                     try:
-                        # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
-                        result = await self.client(ForwardMessagesRequest(
-                            from_peer=await self.client.get_input_entity(source_chat_id),
-                            msg_ids=[message.id],
-                            to_peer=await self.client.get_input_entity(target_group_id),
-                            reply_to_msg_id=topic_id,
-                            random_id=[self.generate_random_id()],
-                            drop_author=False,
-                            drop_media_captions=False
-                        ))
-                        success = True
-                        logger.info(f"[TOPIC_SUCCESS] Method 1 (ForwardMessagesRequest) succeeded")
-                        
-                    except Exception as e1:
-                        logger.warning(f"[TOPIC_FAIL] Method 1 failed: {e1}")
-                        
-                        try:
-                            # Method 2: Try using send_message with forwarded content
+                        # If we have a translation, send translated message instead of forwarding
+                        if translated_text and source_chat_id in self.translate_channels:
+                            logger.info(f"[TRANSLATION_FORWARD] Sending translated message to topic {topic_id}")
+                            
+                            # Create a formatted message with translation info
+                            formatted_message = f"🌐 Translated from {source_chat.title}:\n\n{translated_text}"
+                            
                             if message.media:
-                                # For media messages, download and re-upload
+                                # For media messages, send with translated caption
                                 result = await self.client.send_message(
                                     entity=target_group_id,
-                                    message=message.text or "[Forwarded media]",
+                                    message=formatted_message,
                                     reply_to=topic_id,
                                     file=message.media
                                 )
                             else:
-                                # For text messages, send the text
-                                forwarded_text = f"🔄 Forwarded from {source_chat.title}:\n\n{message.text}"
+                                # For text messages, send the translated text
+                                result = await self.client.send_message(
+                                    entity=target_group_id,
+                                    message=formatted_message,
+                                    reply_to=topic_id
+                                )
+                            success = True
+                            logger.info(f"[TRANSLATION_SUCCESS] Translated message sent successfully")
+                        else:
+                            # Regular forward without translation
+                            # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
+                            result = await self.client(ForwardMessagesRequest(
+                                from_peer=await self.client.get_input_entity(source_chat_id),
+                                msg_ids=[message.id],
+                                to_peer=await self.client.get_input_entity(target_group_id),
+                                reply_to_msg_id=topic_id,
+                                random_id=[self.generate_random_id()],
+                                drop_author=False,
+                                drop_media_captions=False
+                            ))
+                            success = True
+                            logger.info(f"[TOPIC_SUCCESS] Method 1 (ForwardMessagesRequest) succeeded")
+                        
+                    except Exception as e1:
+                        logger.warning(f"[TOPIC_FAIL] Primary method failed: {e1}")
+                        
+                        try:
+                            # Fallback method: Try using send_message with forwarded content
+                            if message.media:
+                                # For media messages, download and re-upload
+                                message_text = translated_text if (translated_text and source_chat_id in self.translate_channels) else message.text
+                                display_text = message_text or "[Forwarded media]"
+                                
+                                if translated_text and source_chat_id in self.translate_channels:
+                                    display_text = f"🌐 Translated from {source_chat.title}:\n\n{display_text}"
+                                else:
+                                    display_text = f"🔄 Forwarded from {source_chat.title}:\n\n{display_text}"
+                                
+                                result = await self.client.send_message(
+                                    entity=target_group_id,
+                                    message=display_text,
+                                    reply_to=topic_id,
+                                    file=message.media
+                                )
+                            else:
+                                # For text messages, send the text (translated if available)
+                                if translated_text and source_chat_id in self.translate_channels:
+                                    forwarded_text = f"🌐 Translated from {source_chat.title}:\n\n{translated_text}"
+                                else:
+                                    forwarded_text = f"🔄 Forwarded from {source_chat.title}:\n\n{message.text}"
+                                
                                 result = await self.client.send_message(
                                     entity=target_group_id,
                                     message=forwarded_text,
@@ -268,28 +372,49 @@ class TelegramForwarder:
                 else:
                     # Forward to general chat (no topic)
                     logger.info(f"[FORWARD_ATTEMPT] Forwarding to general chat in {target_entity.title}")
-                    result = await self.client.forward_messages(
-                        target_group_id,
-                        message,
-                        from_peer=source_chat_id
-                    )
-                    success = True
+                    
+                    if translated_text and source_chat_id in self.translate_channels:
+                        # Send translated message to general chat
+                        logger.info(f"[TRANSLATION_FORWARD] Sending translated message to general chat")
+                        formatted_message = f"🌐 Translated from {source_chat.title}:\n\n{translated_text}"
+                        
+                        if message.media:
+                            result = await self.client.send_message(
+                                entity=target_group_id,
+                                message=formatted_message,
+                                file=message.media
+                            )
+                        else:
+                            result = await self.client.send_message(
+                                entity=target_group_id,
+                                message=formatted_message
+                            )
+                        success = True
+                    else:
+                        # Regular forward
+                        result = await self.client.forward_messages(
+                            target_group_id,
+                            message,
+                            from_peer=source_chat_id
+                        )
+                        success = True
                 
                 if success:
                     self.forwarded_count += 1
                     
                     # Verbose success logging
                     topic_info = f" to topic {topic_id}" if topic_id else " to general chat"
-                    logger.info(f"[FORWARD_SUCCESS] Message forwarded successfully:")
+                    translation_info = " (TRANSLATED)" if translated_text and source_chat_id in self.translate_channels else ""
+                    logger.info(f"[FORWARD_SUCCESS] Message forwarded successfully{translation_info}:")
                     logger.info(f"   From: {source_chat.title} (ID: {source_chat_id})")
                     logger.info(f"   To: {target_entity.title}{topic_info} (Group ID: {target_group_id})")
                     logger.info(f"   Original message ID: {message.id}")
-                    logger.info(f"   Total forwarded: {self.forwarded_count}")
+                    logger.info(f"   Total forwarded: {self.forwarded_count}, Translated: {self.translation_count}")
                 
             except FloodWaitError as e:
                 logger.warning(f"[WAIT] Flood wait error: Need to wait {e.seconds} seconds")
                 await asyncio.sleep(e.seconds)
-                # Retry after waiting
+                # Retry after waiting (note: this will use the original message, not translated)
                 await self.retry_forward(message, source_chat_id, target_group_id, topic_id, target_entity)
                 
             except ChatAdminRequiredError:
@@ -346,7 +471,7 @@ class TelegramForwarder:
         except KeyboardInterrupt:
             logger.info("[STOP] Shutting down...")
         finally:
-            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Errors: {self.error_count}")
+            logger.info(f"[STATS] Final stats - Forwarded: {self.forwarded_count}, Translated: {self.translation_count}, Errors: {self.error_count}")
 
 # Main execution
 async def main():
