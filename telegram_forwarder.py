@@ -305,10 +305,10 @@ class TelegramForwarder:
                             logger.info(f"[TRANSLATION_SUCCESS] Translated message sent successfully")
                         else:
                             # Regular forward without translation
-                            # Method 1: Use ForwardMessagesRequest with reply_to_msg_id
+                            # FIXED: Use 'id' instead of 'msg_ids'
                             result = await self.client(ForwardMessagesRequest(
                                 from_peer=await self.client.get_input_entity(source_chat_id),
-                                msg_ids=[message.id],
+                                id=[message.id],  # FIXED: Changed from msg_ids to id
                                 to_peer=await self.client.get_input_entity(target_group_id),
                                 reply_to_msg_id=topic_id,
                                 random_id=[self.generate_random_id()],
@@ -435,9 +435,10 @@ class TelegramForwarder:
         try:
             if topic_id:
                 logger.info(f"[RETRY] Retrying forward to topic {topic_id} in {target_entity.title}")
+                # FIXED: Use 'id' instead of 'msg_ids'
                 result = await self.client(ForwardMessagesRequest(
                     from_peer=await self.client.get_input_entity(source_chat_id),
-                    msg_ids=[message.id],
+                    id=[message.id],  # FIXED: Changed from msg_ids to id
                     to_peer=await self.client.get_input_entity(target_group_id),
                     reply_to_msg_id=topic_id,
                     random_id=[self.generate_random_id()],
