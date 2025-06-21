@@ -139,8 +139,8 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
      # Bonus Codes: Messages from "Bonus Codes" source channel
-    1002756711574: {   # Bonus Codes source channel ID
-        -4952457968: None, #Test
+    -1002756711574: {   # Bonus Codes source channel ID
+        -1002751892666: None, # Jess,Nasty, And I Chat
 
     }
 
