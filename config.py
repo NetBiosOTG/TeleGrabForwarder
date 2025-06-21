@@ -145,7 +145,7 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
     # Test
-    -1002751892666: { #Nabes Titties
+    -1002491147880: { #Nabes Titties
         -1002027750840: 501, #Tipmetips Bonus Codes
     }
 
