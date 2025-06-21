@@ -46,6 +46,7 @@ class TelegramForwarder:
             -1002060359531: "ja",  # Shuffle JP ブースト - Japanese
             -1002400779729: "ja",  # Razed Jp - レイズド日本公式
             -1002751892666: "ja",  #Jess,Nasty,Me
+            -1002491147880: "ja",  #Nabes Titties
             }
         
     async def translate_text(self, text, source_lang="ja", target_lang="en"):
