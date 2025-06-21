@@ -142,12 +142,12 @@ SOURCE_TO_TOPIC_MAPPING = {
     -1002400779729: {   # Razed Jp - レイズド日本公式 source channel ID
         -1002210132078: None,    # Hotmamajess's Playground (No Topic)
         -1002027750840: 501,     # TipMeTips (Bonus Codes Topic)
-    },
+    }
 
     # Test
-    -1002491147880: { #Nabes Titties
-        -1002027750840: 501, #Tipmetips Bonus Codes
-    }
+    #-1002491147880: { #Nabes Titties
+    #   -1002027750840: 501, #Tipmetips Bonus Codes
+    #}
 
     
 }
