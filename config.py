@@ -138,9 +138,10 @@ SOURCE_TO_TOPIC_MAPPING = {
         -1002027750840: 501,     # TipMeTips (Bonus Codes Topic)
     },
 
-     # Bonus Codes: Messages from "Bonus Codes" source channel
-    -1002751892666: {   # Bonus Codes source channel ID
-        -1002756711574: 14,     # TipMeTips (Bonus Codes Topic)
+     # Razed Jp - レイズド日本公式: Messages from "Razed Jp - レイズド日本公式" source channel
+    -1002400779729: {   # Razed Jp - レイズド日本公式 source channel ID
+        -1002210132078: None,    # Hotmamajess's Playground (No Topic)
+        -1002027750840: 501,     # TipMeTips (Bonus Codes Topic)
 
     }
 
