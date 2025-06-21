@@ -139,8 +139,8 @@ SOURCE_TO_TOPIC_MAPPING = {
     },
 
      # Bonus Codes: Messages from "Bonus Codes" source channel
-    -1002756711574: {   # Bonus Codes source channel ID
-        -1002027750840: 501,     # TipMeTips (Bonus Codes Topic)
+    -1002751892666: {   # Bonus Codes source channel ID
+        -4952457968: None,     # TipMeTips (Bonus Codes Topic)
 
     }
 
