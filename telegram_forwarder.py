@@ -45,7 +45,8 @@ class TelegramForwarder:
         self.translate_channels = {
             -1002060359531: "ja",  # Shuffle JP ブースト - Japanese
             -1002400779729: "ja",  # Razed Jp - レイズド日本公式
-        }
+            -1002751892666: "ja",  #Jess,Nasty,Me
+            }
         
     async def translate_text(self, text, source_lang="ja", target_lang="en"):
         """Translate text using Google Translate API (free tier)"""
